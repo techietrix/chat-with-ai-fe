@@ -14,6 +14,7 @@ export default function SpeechRecognitionComponent() {
 
   useEffect(() => {
     socket.on('stop_mike', () => {
+      console.log('stop_mike');
       stopRecognition();
     });
     socket.on('receive_audio', (data) => {
@@ -44,7 +45,6 @@ export default function SpeechRecognitionComponent() {
         console.log("message: ", finalTextRef.current)
         socket.emit('recognized_speech', finalTextRef.current);
         finalTextRef.current = '';
-        startRecognition();
       } catch (error) {
         // setError(`Failed to send text to API: ${error.message}`);
       }
