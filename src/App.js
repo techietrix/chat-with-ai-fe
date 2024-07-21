@@ -8,6 +8,7 @@ recognition.interimResults = true;
 const socket = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000');
 export default function SpeechRecognitionComponent() {
   const [isListening, setIsListening] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
   const timeoutRef = useRef(null);
   const finalTextRef = useRef('');
   const recognitionRef = useRef(recognition);
@@ -19,9 +20,11 @@ export default function SpeechRecognitionComponent() {
     });
     socket.on('receive_audio', (data) => {
       stopRecognition();
+      setIsPlaying(true);
       const audio = new Audio(data.audioUrl);
       audio.play();
       audio.onended = () => {
+        setIsPlaying(false)
         startRecognition();
       };
     });
@@ -34,7 +37,7 @@ export default function SpeechRecognitionComponent() {
       socket.off('receive_audio');
       socket.off('error');
     };
-  }, [isListening]);
+  }, [isListening, isPlaying]);
 
 
   const handleSilence = useCallback(async () => {
@@ -42,6 +45,7 @@ export default function SpeechRecognitionComponent() {
       stopRecognition();
 
       try {
+        setIsPlaying(true)
         console.log("message: ", finalTextRef.current)
         socket.emit('recognized_speech', finalTextRef.current);
         finalTextRef.current = '';
@@ -126,15 +130,15 @@ export default function SpeechRecognitionComponent() {
       <div style={{ marginBottom: '1rem' }}>
         <button
           onClick={startListening}
-          disabled={isListening}
+          disabled={isListening || isPlaying}
           style={{
             marginRight: '0.5rem',
             padding: '0.5rem 1rem',
-            backgroundColor: isListening ? '#ccc' : '#007bff',
+            backgroundColor: isListening || isPlaying ? '#ccc' : '#007bff',
             color: 'white',
             border: 'none',
             borderRadius: '0.25rem',
-            cursor: isListening ? 'not-allowed' : 'pointer'
+            cursor: isListening || isPlaying ? 'not-allowed' : 'pointer'
           }}
         >
           Start Recording
