@@ -7,7 +7,7 @@ const recognition = new SpeechRecognition();
 recognition.continuous = true;
 recognition.interimResults = true;
 
-const socket = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000');
+const socket = io(process.env.REACT_APP_BACKEND_URL || 'https://5417-106-208-155-33.ngrok-free.app/socket.io');
 
 export default function SpeechRecognitionComponent() {
   const [isListening, setIsListening] = useState(false);
