@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import io from 'socket.io-client';
+
 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = new SpeechRecognition();
 
 recognition.continuous = true;
 recognition.interimResults = true;
+
 const socket = io(process.env.REACT_APP_BACKEND_URL || 'http://localhost:5000');
+
 export default function SpeechRecognitionComponent() {
   const [isListening, setIsListening] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const timeoutRef = useRef(null);
+  const silenceTimeoutRef = useRef(null);
   const finalTextRef = useRef('');
   const recognitionRef = useRef(recognition);
 
@@ -24,7 +27,7 @@ export default function SpeechRecognitionComponent() {
       const audio = new Audio(data.audioUrl);
       audio.play();
       audio.onended = () => {
-        setIsPlaying(false)
+        setIsPlaying(false);
         startRecognition();
       };
     });
@@ -39,18 +42,17 @@ export default function SpeechRecognitionComponent() {
     };
   }, [isListening, isPlaying]);
 
-
   const handleSilence = useCallback(async () => {
     if (finalTextRef.current) {
       stopRecognition();
 
       try {
-        setIsPlaying(true)
-        console.log("message: ", finalTextRef.current)
+        setIsPlaying(true);
+        console.log('message:', finalTextRef.current);
         socket.emit('recognized_speech', finalTextRef.current);
         finalTextRef.current = '';
       } catch (error) {
-        // setError(`Failed to send text to API: ${error.message}`);
+        console.error(`Failed to send text to API: ${error.message}`);
       }
     }
   }, []);
@@ -61,9 +63,17 @@ export default function SpeechRecognitionComponent() {
       recognitionRef.current.start();
       setIsListening(true);
       console.log('Recognition started successfully');
+
+      if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = setTimeout(() => {
+        if (isListening) {
+          stopRecognition();
+          console.log('Microphone stopped due to 5 seconds of silence.');
+        }
+      }, 5000); // Stop recognition if no speech detected within 5 seconds
+
     } catch (error) {
-      // console.error('Error starting recognition:', error);
-      // setError(`Error starting recognition: ${error.message}`);
+      console.error('Error starting recognition:', error);
     }
   };
 
@@ -75,7 +85,6 @@ export default function SpeechRecognitionComponent() {
       console.log('Recognition stopped successfully');
     } catch (error) {
       console.error('Error stopping recognition:', error);
-      // setError(`Error stopping recognition: ${error.message}`);
     }
   };
 
@@ -101,8 +110,8 @@ export default function SpeechRecognitionComponent() {
 
       finalTextRef.current = finalTextRef.current + finalTranscript;
 
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      timeoutRef.current = setTimeout(handleSilence, 2000);
+      if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+      silenceTimeoutRef.current = setTimeout(handleSilence, 2000); // Reset 2 seconds silence detection
     };
 
     recognitionRef.current.onerror = (event) => {
